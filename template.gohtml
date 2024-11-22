@@ -1,0 +1,109 @@
+{{define "Layout"}}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>JIT Example</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+#root {
+    padding: 16px;
+}
+    </style>
+  </head>
+  <body>
+    <div id="root">
+    {{.}}
+    </div>
+  </body>
+</html>
+{{end}}
+
+{{define "Index"}}
+
+<h1>Pomerium Zero JIT Example</h1>
+
+<p>
+This web application demonstrates a Just-In-Time request/approve access flow with Pomerium Zero.
+</p>
+
+<form action="/request-access" method="post">
+    <p>By clicking this button users can request access:</p>
+    <input type="submit" value="Request Access" />
+</form>
+
+<p>
+Users who have access can reach the admin page at <a href="/admin">/admin</a>.
+</p>
+
+
+
+{{end}}
+
+{{define "Admin"}}
+<h1>Pomerium Zero JIT Example</h1>
+
+<p>This is the admin page where users can be approved.</p>
+
+<h2>Users With Access</h2>
+<p>
+    These users have time-limited access.
+</p>
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th>Expires</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+{{ range .jitUsers }}
+    {{ if .Expires.IsZero }}
+    {{ else }}
+        <tr>
+            <td>{{ .Email }}</td>
+            <td>{{ .Expires }}</td>
+            <td>
+                <form action="/admin/revoke-access" method="post">
+                    <input type="hidden" name="email" value="{{.Email}}" />
+                    <input type="submit" value="Revoke" />
+                </form>
+            </td>
+        </tr>
+    {{ end }}
+{{ end }}
+</table>
+
+<h2>Users Requesting Access</h2>
+<p>
+    These users are requesting access. By clicking approve they will be granted time-limited access.
+</p>
+<table>
+    <thead>
+        <tr>
+            <th>Email</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+{{ range .jitUsers }}
+    {{ if .Expires.IsZero }}
+        <tr>
+            <td>{{ .Email }}</td>
+            <td>
+                <form action="/admin/approve-access" method="post">
+                    <input type="hidden" name="email" value="{{.Email}}" />
+                    <input type="submit" value="Approve" />
+                </form>
+                <form action="/admin/revoke-access" method="post">
+                    <input type="hidden" name="email" value="{{.Email}}" />
+                    <input type="submit" value="Reject" />
+                </form>
+            </td>
+        </tr>
+    {{ end }}
+{{ end }}
+</table>
+{{end}}

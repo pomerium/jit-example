@@ -1,0 +1,57 @@
+name: Build
+permissions:
+  contents: read
+on:
+  push:
+    branches:
+      - main
+  pull_request: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@8e5442c4ef9f78752691e2d8f8d19755c6f78e81
+        with:
+          images: |
+            us-central1-docker.pkg.dev/pomerium-public-stg/jit-example/jit-example
+            us-central1-docker.pkg.dev/pomerium-public-prd/jit-example/jit-example
+          tags: |
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@c47758b77c9736f4b2ef4073d4d51994fabfe349
+
+      - name: gcloud authenticate
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        uses: google-github-actions/auth@6fc4af4b145ae7821d527454aa9bd537d1f2dc5f
+        with:
+          project_id: ${{ secrets.GCP_PRODUCTION_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: gcloud sdk
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        uses: google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a
+        with:
+          skip_install: true
+
+      - name: gcloud auth configure-docker
+        if: ${{ github.actor != 'dependabot[bot]' }}
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75
+        with:
+          context: .
+          platforms: linux/amd64
+          file: Dockerfile
+          push: ${{ github.actor != 'dependabot[bot]' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=min
