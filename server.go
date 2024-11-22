@@ -19,21 +19,24 @@ func serve(ctx context.Context) error {
 	log.Info().Str("addr", addr).Msg("starting http server")
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /", handleIndex)
-	mux.HandleFunc("POST /request-access", handleRequestAccess)
-
-	mux.HandleFunc("GET /admin", handleAdmin)
 	mux.HandleFunc("POST /admin/approve-access", handleAdminApproveAccess)
 	mux.HandleFunc("POST /admin/revoke-access", handleAdminRevokeAccess)
+	mux.HandleFunc("GET /admin", handleAdmin)
+
+	mux.HandleFunc("POST /request-access", handleRequestAccess)
+	mux.HandleFunc("GET /", handleIndex)
 
 	authMiddleware, err := newAuthMiddleware(config.jwksEndpoint)
 	if err != nil {
 		return fmt.Errorf("error creating auth middleware: %w", err)
 	}
 
+	loggingMiddleware := newLoggingMiddleware()
+
+	h := authMiddleware(loggingMiddleware(mux))
 	srv := http.Server{
 		Addr:    addr,
-		Handler: authMiddleware(mux),
+		Handler: h,
 	}
 	context.AfterFunc(ctx, func() {
 		shutdownContext, clearTimeout := context.WithTimeout(context.Background(), time.Second*5)
@@ -41,6 +44,15 @@ func serve(ctx context.Context) error {
 		_ = srv.Shutdown(shutdownContext)
 	})
 	return srv.ListenAndServe()
+}
+
+func newLoggingMiddleware() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			log.Info().Str("method", r.Method).Str("path", r.URL.Path).Msg("http request")
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func newAuthMiddleware(jwksEndpoint string) (func(http.Handler) http.Handler, error) {

@@ -20,7 +20,6 @@ jobs:
         with:
           images: |
             us-central1-docker.pkg.dev/pomerium-public-stg/jit-example/jit-example
-            us-central1-docker.pkg.dev/pomerium-public-prd/jit-example/jit-example
           tags: |
             type=sha
             type=raw,value=latest,enable={{is_default_branch}}
