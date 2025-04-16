@@ -25,6 +25,10 @@ func main() {
 	if config.clusterID == "" {
 		log.Fatal().Msg("CLUSTER_ID is required")
 	}
+	config.jwksEndpoint = os.Getenv("JWKS_ENDPOINT")
+	if config.jwksEndpoint == "" {
+		log.Fatal().Msg("JWKS_ENDPOINT is required")
+	}
 	config.organizationID = os.Getenv("ORGANIZATION_ID")
 	if config.organizationID == "" {
 		log.Fatal().Msg("ORGANIZATION_ID is required")
